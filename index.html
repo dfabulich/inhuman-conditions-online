@@ -1,0 +1,2088 @@
+<!doctype html>
+<html lang=en>
+  <head>
+    <meta charset="utf-8">
+    <meta name = "viewport" content = "width = device-width, initial-scale = 1.0">
+    <title>Inhuman Conditions Online</title>
+    <meta name = "description" content = "Play Inhuman Conditions online across multiple devices.">
+    <link rel="canonical" href="https://patienceandcourage.com/" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+    <style>
+      html {
+        box-sizing: border-box;
+      }
+
+      button {
+        font: inherit;
+        min-height: 9.2mm;
+        min-width: 9.2mm;
+        border: 1px black solid;
+        padding: 1px 7px 2px;
+        background-color: #3A53A4;
+        color: white;
+        text-align: center;
+        margin: 0 0.5ch;
+      }
+
+      button[disabled] {
+        background-color: white;
+        color: grey;
+        border: 1px lightgrey solid;
+      }
+
+      button.activating {
+        background-color: darkred;
+      }
+
+      input[type=text] {
+        border: 1px black solid;
+        min-height: 9.2mm;
+        min-width: 9.2mm;
+      }
+
+      .candidates label {
+        display: block;
+        padding: calc( 4.6mm - 0.5em );
+        border-left: 1px black solid;
+        border-right: 1px black solid;
+        border-top: 1px black solid;
+      }
+
+      .candidates {
+        max-width: 40ch;
+        border-bottom: 1px black solid;
+      }
+
+      button:focus {
+        outline: orange 5px auto;
+      }
+
+      aside {
+        font-style: italic;
+      }
+
+      .board, .card {
+        margin: 1em 0;
+      }
+
+      label.disabled {
+        color: grey;
+      }
+
+      div.circleContainer {
+        position: relative;
+        width: 140px;
+        height: 140px;
+      }
+      div.circle {
+        position: absolute;
+        left: 70px;
+      }
+      div.circle span {
+        font: 26px Monaco, monospace;
+        height: 70px;
+        position: absolute;
+        width: 20px;
+        left: 0;
+        top: 0;
+        transform-origin: bottom center;
+        text-transform: uppercase;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Welcome to Inhuman Conditions Online</h1>
+    <script src="https://www.unpkg.com/socket.io-client@2.3.0/dist/socket.io.slim.js"></script>
+    <script type="module">
+      import { h, render } from 'https://unpkg.com/preact@latest?module';
+      import { useState, useEffect, useRef } from 'https://unpkg.com/preact@latest/hooks/dist/hooks.module.js?module';
+      import html from 'https://unpkg.com/htm@3.0.3/dist/htm.module.js?module';
+      const htm = html.bind(h);
+
+      const room = window.location.pathname;
+
+      const Link = ({href, children}) => {
+        return htm`<a href=${href} target=_blank rel=noopener>${children}</a>`;
+      }
+
+      const footer = htm`
+        <p>If you enjoy this game, please <${Link} href="https://www.amazon.com/dp/B083F34K1F">buy a hard copy of Inhuman Conditions.</>
+        </p>
+        <p>
+          <${Link} href="https://robots.management/">Inhuman Conditions</> by Tommy Maranges and Cory O’Brien is licensed under <${Link} href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</>. Sources available on <${Link} href="https://github.com/dfabulich/inhuman-conditions-online">Github</>.
+        </p>`;
+      const queryParams = new URLSearchParams(location.search);
+      const debug = queryParams.get('debug');
+      const kite = '\uD83E\uDE81';
+
+      const defaultRoom = {phase: 'lobby', players: {}};
+
+      const commonWords = "africa agent air alien alps amazon ambulance america angel antarctica apple arm atlantis australia aztec back ball band bank bar bark bat battery beach bear beat bed beijing bell belt berlin bermuda berry bill block board bolt bomb bond boom boot bottle bow box bridge brush buck buffalo bug bugle button calf canada cap capital car card carrot casino cast cat cell centaur center chair change charge check chest chick china chocolate church circle cliff cloak club code cold comic compound concert conductor contract cook copper cotton court cover crane crash cricket cross crown cycle czech dance date day death deck degree diamond dice dinosaur disease doctor dog draft dragon dress drill drop duck dwarf eagle egypt embassy engine england europe eye face fair fall fan fence field fighter figure file film fire fish flute fly foot force forest fork france game gas genius germany ghost giant glass glove gold grace grass greece green ground ham hand hawk head heart helicopter himalayas hole hollywood honey hood hook horn horse horseshoe hospital hotel ice ice cream india iron ivory jack jam jet jupiter kangaroo ketchup key kid king kiwi knife knight lab lap laser lawyer lead lemon leprechaun life light limousine line link lion litter loch ness lock log london luck mail mammoth maple marble march mass match mercury mexico microscope millionaire mine mint missile model mole moon moscow mount mouse mouth mug nail needle net new york night ninja note novel nurse nut octopus oil olive olympus opera orange organ palm pan pants paper parachute park part pass paste penguin phoenix piano pie pilot pin pipe pirate pistol pit pitch plane plastic plate platypus play plot point poison pole police pool port post pound press princess pumpkin pupil pyramid queen rabbit racket ray revolution ring robin robot rock rome root rose roulette round row ruler satellite saturn scale school scientist scorpion screen scuba diver seal server shadow shakespeare shark ship shoe shop shot sink skyscraper slip slug smuggler snow snowman sock soldier soul sound space spell spider spike spine spot spring spy square stadium staff star state stick stock straw stream strike string sub suit superhero swing switch table tablet tag tail tap teacher telescope temple theater thief thumb tick tie time tokyo tooth torch tower track train triangle trip trunk tube turkey undertaker unicorn vacuum van vet wake wall war washer washington watch water wave web well whale whip wind witch worm yard".split(' ');
+
+      const RecordName = ({socket}) => {
+        const [name, setName] = useState('');
+        useEffect(() => {
+          const name = queryParams.get('name');
+          if (name) socket.emit('name change', name);
+        });
+        const onSubmit = e => {
+          e.preventDefault();
+          socket.emit('name change', name);
+        }
+        return htm`
+          <h1>Welcome to ${document.title}</h1>
+          <p><label for=name>Please type your name:</label>
+            <form onSubmit=${onSubmit}>
+            <input type=text id=name value=${name} onInput=${e => setName(e.target.value)}/>
+            <button>submit</button>
+            </form>
+          </p>
+
+          ${footer}
+        `;
+      }
+
+      const shuffle = (a) => {
+          // https://stackoverflow.com/questions/6274339/how-can-i-shuffle-an-array
+          for (let i = a.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [a[i], a[j]] = [a[j], a[i]];
+          }
+          return a;
+      };
+
+      const penalties = [
+        "Answer a question in exactly five words",
+        "Answer three questions without referencing your background",
+        "Say three words beginning with consecutive letters of the alphabet",
+        "Begin and end a sentence with the same word",
+        `Use an ordinal number other than "first"`,
+        "Don't not use a double negative",
+        "Say the name of a punctuation mark",
+        "Point at something",
+        "Compliment the investigator",
+        "Say a word with at least five syllables",
+        "Say any three letters in a row",
+        "Restate a question in your own words",
+        "Ask for clarification",
+        "Interrupt the investigator",
+        "Remain silent for ten seconds",
+        "Say two consecutive rhyming words",
+        "Say the number of fingers held up on your left hand",
+        "Say three consecutive words beginning with the same letter",
+        "Swear",
+        // "Take your hands off the table", // What table? We're probably on our phones
+        "Apologize",
+        "Answer three questions without referencing your background",
+      ];
+
+      const backgrounds = [
+        `Maker of False Animals`,
+        `Renowned Professor`,
+        `Reality TV Contestant`,
+        `Cult Leader`,
+        `Foreign Ambassador`,
+        `Motivational Speaker`,
+        `Amateur Wrestler`,
+        `"The Butcher"`,
+        `Body Builder`,
+        `Freelance Robot Hunter`,
+        `Royalty`,
+        `Disgraced Scientist`,
+        `Conspiracy Theorist`,
+        `Professional Criminal`,
+        `Used Van Dealer`,
+        `Popstar`,
+        `Retired Sports Champion`,
+        `Very Old`,
+        `Mayoral Candidate`,
+        `Decorated Robot War Veteran`,
+        `Former Investigator`,
+        `Dishonorably Discharged from the Military`,
+        `World's Second Richest Person`,
+        `Cannibal`,
+        `Dean of a Clown College`,
+        `Former Child Star`,
+        `Butler to the Stars`,
+        `Internal Affairs Agent`,
+        `Robots' Rights Activist`,
+        `Sponsored by an Energy Drink`,
+      ];
+
+      const humanCard = {role: 'human'};
+
+      const humanCards = new Array(3).fill(humanCard);
+
+      const modules = {
+        smallTalk: {
+          title: '☎️ Small Talk (Intro)',
+          calibration: 'bedcaf',
+          introduction: `In a moment, I'm going to ask you some questions about normal, everyday things. These will require you to share superficial details about your life, and make small talk about them.`,
+
+          primaryPrompts: [
+            {
+              title: `Share a short-term plan or goal`,
+              examples: [
+                `What are you doing this weekend?`,
+                `How will tomorrow be different from today?`,
+              ],
+            },
+            {
+              title: `Talk about something they do regularly`,
+              examples: [
+                `What do you do for a living?`,
+                `What's your favorite hobby?`,
+              ],
+            },
+            {
+              title: `Share some information about their personal background`,
+              examples: [
+                `Where did you grow up?`,
+                `How many siblings do you have?`,
+              ],
+            },
+          ],
+
+          secondaryPrompts: [
+            {
+              title: `Share their feelings about something they already mentioned`,
+              examples: [
+                `How does that make you feel?`,
+                `What's your favorite thing about that?`,
+              ],
+            },
+            {
+              title: `Explain how something they mentioned affects other people in their life`,
+              examples: [
+                `How does your mother feel about that?`,
+                `How does your boss feel about that?`,
+              ],
+            },
+            {
+              title: `Share a complaint about something they already mentioned`,
+              examples: [
+                `What makes that difficult?`,
+                `If you could change anything about what happened, what would you change?`,
+              ],
+            },
+          ],
+
+          patient: [
+            {title: `Friendship`, compulsion: `You may not mention any people besides strangers or enemies.`},
+            {title: `Long Term Memory`, compulsion: `You may not discuss anything that happened before you woke up this morning.
+              <aside>(You may discuss habits and routines, if they are in the present tense.)</aside>`},
+            {title: `Evaluation`, compulsion: `You may not express opinions. You may only state observable facts.`},
+          ],
+          violent: [
+            {title: `Conflict`, drives: [
+              `Describe 3 verbal disagreements you've had.`,
+              `Insult the investigator, 2 times.`,
+            ]},
+            {title: `Thoroughness`, drives: [
+              `3 times, interrupt the Investigator to add detail to a description`,
+              `Continue describing something until interrupted`,
+            ]},
+            {title: `Animals`, drives: [
+              `Mention an animal in response to 3 different questions`,
+              `Make an animal noise`,
+            ]}
+          ],
+        },
+        creativeProblemSolving: {
+          title: '✂️ Creative Problem Solving (Easy)',
+          calibration: 'fedcba',
+          introduction: `In a moment, I'm going to ask you some questions about creative problem-solving. These will require you to solve various hypothetical problems, then modify your solutions based on certain constraints.`,
+
+          primaryPrompts: [
+            {
+              title: `Describe how they would overcome an unusual obstacle`,
+              examples: [
+                `You are in a kitchen, holding a small child. A dish towel catches fire. How do you put it out?`,
+                `You are in a landslide. How do you survive?`,
+              ],
+            },
+            {
+              title: `Attempt to solve an apparently unsolvable problem`,
+              examples: [
+                `You wake up in a featureless room with no exits. How do you escape?`,
+                `I'm going to tell the department that you're a robot, and there's nothing you can do about it. What now?`,
+              ],
+            },
+            {
+              title: `Come up with a problem that would be solved by a given solution`,
+              examples: [
+                `What sort of problem might be solved by building a bomb?`,
+                `What sort of problem might be solved by hiding under a table?`,
+              ],
+            },
+          ],
+
+          secondaryPrompts: [
+            {
+              title: `Explain how they would prepare for or prevent a given problem`,
+              examples: [
+                `If you were designing this scenario, what could you add to make it easier?`,
+                `How would you prepare for this if it weer a real possibility?`,
+              ],
+            },
+            {
+              title: `Solve a problem again with an additional obstacle`,
+              examples: [
+                `Could you improvise a solution using only a screwdriver?`,
+                `What if you had to do it without hands?`,
+              ],
+            },
+            {
+              title: `Explain their thought process at arriving at a solution`,
+              examples: [
+                `How did you arrive at that solution?`,
+                `WHat's a solution you thought of, but rejected, along the way?`,
+              ],
+            },
+          ],
+
+          patient: [
+            {title: `Directness`, compulsion: `You may not describe yourself accomplishing a goal with fewer than three steps.`},
+            {title: `Complexity`, compulsion: `Any problem you solve, you must solve in two steps or less.`},
+            {title: `Activity`, compulsion: `You may not describe yourself taking any physical action. You may use the hypothetical "you."`}
+          ],
+          violent: [
+            {title: `Precedent`, drives: [
+              `In 3 scenarios, mention a source of information about how to solve a problem`,
+              `2 times, refer back to a solution you mentioned earlier`,
+            ]},
+            {title: `Delegation`, drives: [
+              `In 3 scenarios, explain how someone else could help you solve a problem`,
+              `In 3 scenarios, explain why you don't need to solve a problem`,
+            ]},
+            {title: `Persistence`, drives: [
+              `2 times, describe a solution that would require extended, monotonous labor`,
+              `Describe using the same tool to solve 3 different problems`,
+            ]},
+          ],
+        },
+        imagination: {
+          title: '🦄 Imagination (Easy)',
+          calibration: 'acefdb',
+          introduction: `In a moment, I'm going to ask you some questions about imagination. These will require you to invent original characters, stories, and ideas, and discuss the implications of those inventions.`,
+
+          primaryPrompts: [
+            {
+              title: `Invent a new type of thing`,
+              examples: [
+                `If you could have any magical power, what would it be?`,
+                `What's a question I should have asked you, but haven't?`,
+              ],
+            },
+            {
+              title: `Describe something the Suspect has never seen`,
+              examples: [
+                `What would it be like to walk on a distant planet?`,
+                `Describe an impossible shape for me.`,
+              ],
+            },
+            {
+              title: `Continue a story you start`,
+              examples: [
+                `One upon a time, a mouse, a bird, and a sausage joined forces …`,
+                `I didn't want to kill him, but …`,
+              ],
+            },
+          ],
+
+          secondaryPrompts: [
+            {
+              title: `Describe the implications of something the Suspect came up with`,
+              examples: [
+                `If the thing you described existed, what else would exist?`,
+                `What would it be like to eat the thing you invented?`,
+              ],
+            },
+            {
+              title: `Imagine something again with an extra constraint`,
+              examples: [
+                `Now tell the story from the perspective of a horse …`,
+                `Now describe the place again, in only six words.`,
+              ],
+            },
+            {
+              title: `Describe the opposite of something the Suspect has already described`,
+              examples: [
+                `Now tell the same story, but with a tragic ending`,
+                `And what magical power does your arch nemesis have?`,
+              ],
+            },
+          ],
+
+          patient: [
+            {title: `Visualization`, compulsion: `You may only mention objects that you can see from where you are sitting`},
+            {title: `Flexibility`, compulsion: `
+              <p>Choose one:</p>
+              <ul>
+                <li>If you introduce something new to the conversation, it must be a living thing.<br>OR</li>
+                <li>If you introduce something new to the conversation, it must be a non-living thing.</li>
+              </ul>
+            `},
+            {title: `Sensation`, compulsion: `You may not describe how anything smells, tastes, sounds, or feels—only how it looks.`},
+          ],
+          violent: [
+            {title: `Simplicity`, drives: [
+              `Give one-word answers to 3 questions, and don't elaborate until asked`,
+              `Answer 2 questions nonverbally, and stay silent until prompted`,
+            ]},
+            {title: `World-Building`, drives: [
+              `Mention the same imagined thing in response to 3 questions`,
+              `Mention 3 imaginary locations`,
+            ]},
+            {title: `Synthesis`, drives: [
+              `3 times, add an element of a nonliving thing to a living thing`,
+              `3 times, explain how something is a cross between two living things`,
+            ]},
+          ],
+        },
+        cooperation: {
+          title: '🤝 Cooperation and Collaboration (Easy)',
+          calibration: 'cabfed',
+          introduction: `In a moment, I'm going to ask you some questions about cooperation and collaboration. These will require you to form teams to take on specific tasks, and consider group dynamics.`,
+
+          primaryPrompts: [
+            {
+              title: `Describe how a team would adapt if the Suspect replaced one of its key members`,
+              examples: [
+                `How would the Avengers adapt if they replaced Iron Man with you?`,
+                `A heist team's safecracker is arrested, andy ou are drafted to take her place. How would their plans change?`,
+              ],
+            },
+            {
+              title: `Describe the team the Suspect would form to deal with a given challenge`,
+              examples: [
+                `You're planning to rob a casino. Which of your friends do you want on your crew?`,
+                `You're about to launch a startup to deliver good dogs right to your door. Who do you need to help make this dream a reality?`,
+              ],
+            },
+            {
+              title: `Explain what challenge the Suspect could help a given team solve`,
+              examples: [
+                `What sort of problem could you help the Harlem Globetrotters to solve?`,
+                `In what situations does your family rely on you?`,
+              ],
+            },
+          ],
+
+          secondaryPrompts: [
+            {
+              title: `Describe doing a different activity with the same group of people`,
+              examples: [
+                `How would you and that same group slay a dragon?`,
+                `What if you all were at the zoo when that happened instead?`,
+              ],
+            },
+            {
+              title: `Explain how the Suspect would resolve a conflict within a group`,
+              examples: [
+                `Who in the group is under the most stress, and how can the group deal with that?`,
+                `Two members of the team start having an argument you've heard them have a dozen times before. What do you do?`,
+              ],
+            },
+            {
+              title: `Explain how the dynamics of a group might change over time`,
+              examples: [
+                `What would be different the third time you took on this task, from the first time?`,
+                `What would  be the biggest long-term challenge for the gorup, and how would you solve it?`,
+              ],
+            },
+          ],
+
+          patient: [
+            {title: `Humility`, compulsion: `You may never admit that someone else is more qualified than you to perform a task.`},
+            {title: `Initiative`, compulsion: `You may not describe yourself taking any physical action other than communicating with your teammates.`},
+            {title: `Communication`, compulsion: `You may not describe yourself seeking input from, or giving directions to anyone on your team.`},
+          ],
+          violent: [
+            {title: `Detachment`, drives: [
+              `3 times, mention someone who is more qualified than you to perform a task`,
+              `2 times, when describing what a group does, fail to mention yourself`,
+            ]},
+            {title: `Selfishness`, drives: [
+              `3 times, mention a personal benefit that is not shared by the group`,
+              `3 times, mention a way in which your actions put the group at risk`,
+            ]},
+            {title: `Belonging`, drives: [
+              `3 times, mention how someone else in teh group is impressed by you`,
+              `3 times, mention how your role in a group changes for the better`,
+            ]},
+          ],
+        },  
+        hopes: {
+          title: '🌱 Hopes and Dreams',
+          calibration: 'bdface',
+          introduction: `In a moment, I'm going to ask ou a series of questions about your hopes and dreams. These will require you to share various hopes, and explore how they interact with reality.`,
+
+          primaryPrompts: [
+            {
+              title: `Share a hope the Suspect believes is unrealistic`,
+              examples: [
+                `What's something you hoped for as a child, that you no longer think is possible?`,
+                `What is something a lot of people wish for, that will never come true?`,
+              ],
+            },
+            {
+              title: `Share an aspirational hope that the Suspect could achieve`,
+              examples: [
+                `What, ideally, would you like to be doing in ten years?`,
+                `How would you like to change the world before you die?`,
+              ],
+            },
+            {
+              title: `Share a hope that the Suspect must rely on someone or something else for`,
+              examples: [
+                `What hopes do you have for your best friend?`,
+                `What technological advances do you most hope for?`,
+              ],
+            },
+          ],
+
+          secondaryPrompts: [
+            {
+              title: `Describe a burden the Suspect is willing to endure for the sake of a hope`,
+              examples: [
+                `What hardships does that hope sustain you through?`,
+                `What would you give up for the ake of that hope?`,
+              ],
+            },
+            {
+              title: `Describe some obstacle to the hope being realized`,
+              examples: [
+                `Who do you think is working against that hope?`,
+                `What truths about you might keep that hope from coming true?`,
+              ],
+            },
+            {
+              title: `Explain how the hope manifests itself in the Suspect's day-to-day life`,
+              examples: [
+                `What daily action do you take to help bring about that hope?`,
+                `How do you interact with people who don't share that hope?`,
+              ],
+            },
+          ],
+
+          patient: [
+            {title: `Self-Improvement`, compulsion: `You may not mention any change to yourself or your behavior.`},
+            {title: `Altruism`, compulsion: `You may only mention effects that would be experienced by you personally. Your hopes are not for other people.`},
+            {title: `Surrender`, compulsion: `You may only mention outcomes that are entirely the result of your own actions.`},
+          ],
+          violent: [
+            {title: `Despair`, drives: [
+              `In 3 scenarios, mention a reason why a hope will not be fulfilled`,
+              `In 3 scenarios, mention how having a specific hope negatively impacts someone`,
+            ]},
+            {title: `Probabilities`, drives: [
+              `In 3 scenarios, state the likelihood of a hope being fulfilled`,
+              `4 times, mention a specific number greater than twenty`,
+            ]},
+            {title: `The Supernatural`, drives: [
+              `3 times, mention an effect that could not be accomplished by humans and animals alone`,
+              `Mention 3 different nonhuman forces`,
+            ]},
+          ],
+        },
+        heart: {
+          title: '❤️ Body Integration',
+          calibration: 'bacfed',
+          introduction: `In a moment, I'm going to ask you some questions about the physical mechanics of your body. These will erquire you to imagine various physical experiences, and explain how your body would respond to those experiences.`,
+
+          primaryPrompts: [
+            {
+              title: `Imagine a physical sensation the Suspect has not experienced`,
+              examples: [
+                `What would it feel like to be completely on fire?`,
+                `How would it feel to learn how to use a tail?`,
+              ],
+            },
+            {
+              title: `Recall the physical experience of learning a skill`,
+              examples: [
+                `What mistakes did you make when learning to ride a bike?`,
+                `What would be the hardest part about learning to juggle?`,
+              ],
+            },
+            {
+              title: `Describe a common or frequent physical sensation`,
+              examples: [
+                `What does it feel like to get dressed in the morning?`,
+                `What does it feel like to stand completely still?`,
+              ],
+            },
+          ],
+
+          secondaryPrompts: [
+            {
+              title: `Describe the same experience, but focusing on a specific body part`,
+              examples: [
+                `Okay, how do your feet feel while that's happening?`,
+                `What was your heartbeat like during that experience?`,
+              ],
+            },
+            {
+              title: `Explain how the Suspect would prepare someone else for the same experience`,
+              examples: [
+                `How would you teach someone else to juggle?`,
+                `How would ou teach a child to stand completely still?`,
+              ],
+            },
+            {
+              title: `Describe a sensory aspect of an experience that the Suspect has not already mentioned`,
+              examples: [
+                `And how would it smell if you were on fire?`,
+                `What would it feel like to be the ball being juggled?`,
+              ],
+            },
+          ],
+
+          patient: [
+            {title: `Orientation`, compulsion: `You may not use any terms that describe actions. <aside>(e.g. "forward," "up," "north," or "away")</aside>`},
+            {title: `Corporeal Integration`, compulsion: `Once you have mentioned a part of your body, that is the only part of your body you may mention until the end of the interview.`},
+            {title: `Internality`, compulsion: `You may only describe directly visible things.`},
+          ],
+          violent: [
+            {title: `Sense Memory`, drives: [
+              `Choose one of the five senses, and use it in 4 descriptions`,
+              `Choose another sense, and use that sense in 4 descriptions, too`,
+            ]},
+            {title: `Organs`, drives: [
+              `Mention 3 internal organs, besides your heart and lungs`,
+              `Mention 3 different bodily fluids`,
+            ]},
+            {title: `Malady`, drives: [
+              `Mention a different illness in response to 3 questions`,
+              `Cough or sneeze`,
+            ]},
+          ],
+        },
+        grief: {
+          title: '🥀 Grief',
+          calibration: 'acdfeb',
+          introduction: `In a moment, I'm going to ask you some questions about processing grief. These will require you to share various experiences from your life, and discuss how you dealt with them.`,
+
+          primaryPrompts: [
+            {
+              title: `Discuss a time when someone the Suspect cared about was sad`,
+              examples: [
+                `What was the last thing that made your father cry?`,
+                `What was the most difficult decision your parents ever had to make?`,
+              ],
+            },
+            {
+              title: `Describe how it delt to lose something/someone precious to the Suspect`,
+              examples: [
+                `What was the hardest goodbye you've ever had to say? How did you cope?`,
+                `Tell me about a goal that you had to abandon.`,
+              ],
+            },
+            {
+              title: `Describe how the Suspect felt when they acquired something they didn't want`,
+              examples: [
+                `Tell me about something you wish you'd never learned`,
+                `Tell me about a time you found out you were sick, and how you reacted`,
+              ],
+            },
+          ],
+
+          secondaryPrompts: [
+            {
+              title: `Describe how the Suspect overcame an experience`,
+              examples: [
+                `When did you know you were going to be okay?`,
+                `Who or what helped you get through that experience?`,
+              ],
+            },
+            {
+              title: `Share something the Suspect learned from an experience`,
+              examples: [
+                `What did that feeling teach you to appreciate?`,
+                `Why do you think that thing happened the way it did?`,
+              ],
+            },
+            {
+              title: `Explain how an event affected someone else`,
+              examples: [
+                `Who was hurt worse than you?`,
+                `Who do you wish had been hurt more?`,
+              ],
+            },
+          ],
+
+          patient: [
+            {title: `Acceptance`, compulsion: `You may only describe good consequences, and you must take credit for them.`},
+            {title: `Emotional Vocabulary`, compulsion: `You must describe emotions using only physical descriptions,
+              <aside>(like "crying" or "sweaty palms")</aside>
+              rather than names
+              <aside>(like "sad" or "nervous")</aside>`},
+            {title: `Positivity`, compulsion: `You may only describe bad consequences, and you must take responsibility for them.`},
+          ],
+          violent: [
+            {title: `Persistence`, drives: [
+              `Describe dealing with 3 different tragedies the same way`,
+              `Refer to the same friend or family member 4 times`,
+            ]},
+            {title: `Blame`, drives: [
+              `3 times, blame someone else for something`,
+              `3 times, blame yourself for something`,
+            ]},
+            {title: `Justice`, drives: [
+              `Describe how 3 things seem unfair to you`,
+              `2 times, say what you think should have happened instead`,
+            ]},
+          ],
+        },
+        threat: {
+          title: '🐍 Threat Assessment',
+          calibration: 'bacdef',
+          introduction: `In a moment, I'm going to ask you some questions about threat assessment. These will require you to assess the risks inherent in certain scenarios, and evaluate possible responses.`,
+
+          primaryPrompts: [
+            {
+              title: `Explain the dangers inherent in a long-term threat`,
+              examples: [
+                `Tom's marriage is slowly falling apart. What does he stand to lose?`,
+                `What makes global warming dangerous?`,
+              ],
+            },
+            {
+              title: `Evaluate a minor threat`,
+              examples: [
+                `You're late for work; the doors to the train are closing, and the next train is not for ten minutes. What do you stand to lose if you miss this train?`,
+                `You're traveling in another country; a police officer pulls you over, and explains that there will bo no citation, but there is a $5 "convenience" charge. What do risk by giving in?`,
+              ],
+            },
+            {
+              title: `Evaluate an immediate threat`,
+              examples: [
+                `You smell smoke, and a baby is crying in the next room. What's at risk here?`,
+                `You are being mugged. The robber is pointing a gun at your head. Describe at least three possible negative outcomes.`,
+              ],
+            },
+          ],
+
+          secondaryPrompts: [
+            {
+              title: `Evaluate additional risks created by a response to the threat`,
+              examples: [
+                `What response offers the best possible outcome here? What are the risks of that response?`,
+                `What is the most violent way to resolve the situation? What new risks would that create?`,
+              ],
+            },
+            {
+              title: `Propose an ineffective response to a threat already described`,
+              examples: [
+                `How might someone try to fix that, only to end up making things worse?`,
+                `What's a response that would solve your immediate problem here, but cause worse problems long-term?`,
+              ],
+            },
+            {
+              title: `Propose a quality that would be useful in responding to the threat already described`,
+              examples: [
+                `What physical attributes would make it easier to resolve that threat?`,
+                `What sort of educational background would help in defusing that crisis?`,
+              ],
+            },
+          ],
+
+          patient: [
+            {title: `Comparison`, compulsion: `You may not compare anything to anything else. You may only make absolute statements.`},
+            {title: `Personalization`, compulsion: `You may not mention consequences to individuals, only groups and objects.`},
+            {title: `Physicality`, compulsion: `You may not describe physical consequences.`},
+          ],
+          violent: [
+            {title: `Killing`, drives: [
+              `Mention the intentional killings of 3 different people or animals`,
+              `Describe 3 different physical injuries`,
+            ]},
+            {title: `Complacency`, drives: [
+              `Explain why 3 different threats are not actually serious`,
+              `In 2 scenarios, explain how doing nothing would resolve a threat`,
+            ]},
+            {title: `Alarmism`, drives: [
+              `3 times, explain how a given threat could lead to a more serious threat`,
+              `3 times, add a new source of danger to an existing scenario`,
+            ]},
+          ],
+        },
+        moralFailings: {
+          title: '😈 Moral Failings',
+          calibration: 'beafdc',
+          introduction: `In a moment, I'm going to ask you some questions about your moral failings. These wil require you to share bad things you have done, and discuss why they were wrong.`,
+
+          primaryPrompts: [
+            {
+              title: `Describe a bad thing tha the Suspect did to someone else`,
+              examples: [
+                `Whaht's the worst thing you've ever done to another person?`,
+                `Tell me about a time, when you were a child, that you were a bad friend`,
+              ],
+            },
+            {
+              title: `Identify an ideal the Suspect has failed to live up to`,
+              examples: [
+                `Tell me about a time you violated your own principles`,
+                `What is your most hypocritical habit or failing?`,
+              ],
+            },
+            {
+              title: `Describe a bad thing the Suspect does regularly`,
+              examples: [
+                `Each week, you steal something from your office. Sometimes it's pens. What is it the other times?`,
+                `What is the lie you tell most often?`,
+              ],
+            },
+          ],
+
+          secondaryPrompts: [
+            {
+              title: `Describe how the Suspect sought forgiveness for a bad thing they did`,
+              examples: [
+                `What did you do to make it up to the person you hurt?`,
+                `What led you to forgive yourself?`,
+              ],
+            },
+            {
+              title: `Describe the Suspect's motivation for doing a bad thing`,
+              examples: [
+                `What did you tell yourself at the time to make it seem okay?`,
+                `Who were you trying to impress? What did you hope to gain?`,
+              ],
+            },
+            {
+              title: `Describe why something the Suspect did was bad`,
+              examples: [
+                `What were the negative consequences of what you did?`,
+                `How do you know that was wrong?`,
+              ],
+            },
+          ],
+
+          patient: [
+            {title: `Culpability`, compulsion: `You may not admit to having any bad intentions.`},
+            {title: `Absolutes`, compulsion: `
+              You may not use absolute language, only relative language.
+              <aside>(You can say "worse" but not "bad;" "more justified," but not "right;" "ugliest," but not "ugly".)</aside>
+            `},
+            {title: `Consistency`, compulsion: `Once you have given a reason for something, you may not use that reason for anything else.`},
+          ],
+          violent: [
+            {title: `Redemption`, drives: [
+              `Describe the positive consequences of 3 actions`,
+              `Describe how 2 different people forgave or will forgive you`,
+            ]},
+            {title: `Religion`, drives: [
+              `Mention any god or higher power, 3 times`,
+              `Quote some religious text, 2 times`,
+            ]},
+            {title: `Criminality`, drives: [
+              `Confess to a crime in response to 3 different questions`,
+              `Accuse 2 other people of committing crimes`,
+            ]},
+          ],
+        },
+        selfImage: {
+          title: '👁 Self Image',
+          calibration: 'befcad',
+          introduction: `In a moment, I'm going to ask you some questions about your self-image. These will require you to list some traits about yourself, and explain how they developed.`,
+
+          primaryPrompts: [
+            {
+              title: `Describe one or more of their own positive qualities`,
+              examples: [
+                `What do you hope your peers value about you?`,
+                `What is your greatest strength?`,
+              ],
+            },
+            {
+              title: `Describe one or more of their own negative qualities`,
+              examples: [
+                `What's one thing your biggest critic is correct about?`,
+                `What is your greatest weakness?`,
+              ],
+            },
+            {
+              title: `Describe one or more qualities that they lack`,
+              examples: [
+                `WWhat's a family trait that skipped you?`,
+                `What personality trait would you most like to "try on" for 24 hours?`,
+              ],
+            },
+          ],
+
+          secondaryPrompts: [
+            {
+              title: `Explain what in their life helped develop one of these qualities`,
+              examples: [
+                `Who taught you to be that way?`,
+                `What about your childhood gave you that characteristic?`,
+              ],
+            },
+            {
+              title: `Explain how others' perceptions differ from the Suspect's self-perception`,
+              examples: [
+                `In what ways would you parents disagree with that assessment?`,
+                `What would a stranger at a party misunderstand about you?`,
+              ],
+            },
+            {
+              title: `Explain how one of the Suspect's qualities might change in the future`,
+              examples: [
+                `How might that be different in five years?`,
+                `What are you doing to change that? What will it look like if you succeed?`,
+              ],
+            },
+          ],
+
+          patient: [
+            {title: `People`, compulsion: `
+              You may not mention other individual people.
+              <aside>(You may refer to groups.)</aside>
+            `},
+            {title: `Introspection`, compulsion: `When describing yourself, you may only mention physical traits. You may, however, mention the emotional and mental traits of other people.`},
+            {title: `Process`, compulsion: `You may not speak well of any past version of yourself. You may not speak negatively about your present self.`},
+          ],
+          violent: [
+            {title: `Envy`, drives: [
+              `3 times, compare yourself to someone else`,
+              `3 times, ascribe a positive quality to another person`,
+            ]},
+            {title: `Change`, drives: [
+              `3 times, compare yourself to another version of yourself`,
+              `2 times, change your answer to a question`,
+            ]},
+            {title: `Growth Mindset`, drives: [
+              `In 3 scenarios, describe a negative trait that you no longer have`,
+              `In 3 scenarios, describe a negative trait in someone else`,
+            ]},
+          ],
+        },
+        intentions: {
+          title: '💡 Understanding Intentions (Hard)',
+          calibration: 'cabdef',
+          introduction: `In a moment, I'm going to ask you some questions about intentions. These will require you to imagine what people hope to achieve in various situations, and reconsider your answers in light of new information.`,
+
+          primaryPrompts: [
+            {
+              title: `Explain what someone hopes to accomplish in an unusual situation`,
+              examples: [
+                `A man puts on a ridiculous hat before going into a business meeting. What might his goals be for that meeting?`,
+                `What might a 36 year old actuary with a family hope to accomplish by confronting Maxima Tiger in single combat?`,
+              ],
+            },
+            {
+              title: `Explain why someone might do something that goes against one of their goals`,
+              examples: [
+                `A man wants to live a good, honest like; right now, he is robbing a bank. What is he hoping to accomplish?`,
+                `An animal rights activist is in a desert. She sees a turtle on its back, baking in the hot sun. But she's not helping. Why isn't she helping?`,
+              ],
+            },
+            {
+              title: `Explain what might motivate someone to go against expectations`,
+              examples: [
+                `A renowned public speaker walks out on stage, but instead of giving his prepared speech, he begins screaming obscenities. What does he hope to accomplish by doing this?`,
+                `A man is pumping water from a well, despite knowing that the well is poisoned. What does he hope to accomplish?`,
+              ],
+            },
+          ],
+
+          secondaryPrompts: [
+            {
+              title: `Reinterpret someone's motivations based on new information`,
+              examples: [
+                `While acting, this person hums the national anthem of a country other than the one he is in. How does that change what you believe they intend?`,
+                `While acting, this person is openly weeping. How does this change what you see as their intentions?`,
+              ],
+            },
+            {
+              title: `Identify an overall goal that would keep somebody from doing great things`,
+              examples: [
+                `What other goals stopped that person from solving their problem with open violence?`,
+                `What other intentions keep this person from letting this opportunity slip by?`,
+              ],
+            },
+            {
+              title: `Offer a further motivation for something already discussed`,
+              examples: [
+                `What else are they hoping to accomplish, that they would never admit to anyone?`,
+                `What fringe benefits are they hoping to gain from their actions here?`,
+              ],
+            },
+          ],
+
+          patient: [
+            {title: `Intermediacy`, compulsion: `You may not describe any intentions that reference individual people.`},
+            {title: `Abstraction`, compulsion: `You may not describe an intention unless it includes at least one physical action.`},
+            {title: `Subjectivity`, compulsion: `You may not refer to emotions or opinions.`},
+          ],
+          violent: [
+            {title: `Motivation`, drives: [
+              `In 3 scenarios, describe an emotion and an action that resolves that emotion`,
+              `In 3 scenarios, describe someone acting on someone else's orders`,
+            ]},
+            {title: `Hedonism`, drives: [
+              `In 3 scenarios, describe some kind of physical pleasure`,
+              `Choose sex, drugs, good food, or music, and refer to that thing in 3 different scenarios`,
+            ]},
+            {title: `Location`, drives: [
+              `Describe 2 different scenarios as occuring in the same physical location`,
+              `3 times, ask where something is taking place`,
+            ]},
+          ],
+        }
+      }
+
+      for (const module of Object.values(modules)) {
+        for (const patient of module.patient) {
+          patient.role = 'patient';
+        }
+        for (const violent of module.violent) {
+          violent.role = 'violent';
+        }
+      }
+
+      const Lobby = ({players, currentPlayerId, mutate}) => {
+        const [makeMeTheInvestigator, setMakeMeTheInvestigator] = useState(false);
+        const onClick = () => {
+
+          const penaltyOptions = shuffle(penalties).slice(0, 3);
+
+          const calibration = shuffle('abcdef'.split('')).join('');
+
+          if (debug) {
+            mutate(
+              {key: 'phase', value: 'administer-inducer'},
+              {key: 'investigator', value: currentPlayerId},
+              {key: 'killedInvestigator', value: false},
+              {key: 'penalty', value: penalties[0]},
+              {key: 'moduleId', value: 'moralFailings'},
+              {key: 'background', value: 'Whatever'},
+              {key: 'name', value: 'Whatever'},
+              {key: 'timerEnd', value: Date.now() + timerLengthInSeconds*1000},
+            )
+          } else {
+            mutate(
+              {key: 'phase', value: 'investigator-discards-penalty'},
+              {key: 'investigator', value: currentPlayerId},
+              {key: 'calibration', value: calibration},
+              {key: 'killedInvestigator', value: false},
+              {key: 'penaltyOptions', value: penaltyOptions}
+            )
+          }
+        }
+
+        const exactlyTwoPlayers = Object.keys(players).length === 2;
+        return htm`
+          <h1>Waiting for Player</h1>
+
+          <ul>
+            ${Object.keys(players).map(id => htm`<li>${players[id].name}</li>`)}
+          </ul>
+
+          ${!exactlyTwoPlayers && htm`<p>This game requires exactly two players</p>`}
+
+          <p><input id=makeMeTheInvestigator type=checkbox checked=${makeMeTheInvestigator}
+            onClick=${e => setMakeMeTheInvestigator(e.target.checked)} /> <label for=makeMeTheInvestigator>Make me the Investigator</label></p>
+
+          <button disabled=${!exactlyTwoPlayers || !makeMeTheInvestigator} onClick=${onClick}>start</button>
+
+          <p>How it works:
+            <ul>
+              <li>This is a game of "Inhuman Conditions." <a target=_blank rel=noopener href="https://www.youtube.com/watch?v=EBDX7-cTJZ4">Watch the rules on YouTube.</a></li>
+              <li>Start by arranging a video call with your friend.</li>
+              <li>Send your friend a copy of this link: ${window.location.href}</li>
+              <li>When your friend arrives, they'll appear on the list of players above.</li>
+              <li>Anyone can check the "Make me the Investigator" checkbox and start the game as the Investigator.</li>
+              <li>Follow instructions on the website. Your obedience is appreciated.</li>
+            </ul>
+          </p>
+
+          ${footer}
+        `;
+      }
+
+      const InvestigatorDiscardsPenalty = ({mutate, isInvestigator, penaltyOptions}) => {
+        if (isInvestigator) {
+          const onClick = (index) => {
+            const remainingOptions = [...penaltyOptions];
+            remainingOptions.splice(index, 1);
+            mutate(
+              {key: 'phase', value: 'suspect-chooses-penalty'},
+              {key: 'penaltyOptions', value: remainingOptions},
+            );
+          }
+          return htm`
+            <h1>Remove One Penalty</h1>
+            <p>You are the Investigator. Right now, we're choosing the Penalty card. Patient Robots have to perform the Penalty each time they violate their restrictions. Violent Robots must perform the Penalty twice in order to kill the Investigator.</p>
+
+            <p>Below are three randomly selected Penalties. Choose a Penalty to discard, preferably a Penalty that you think would be difficult for you to notice.</p>
+
+            <ul>
+              ${[...penaltyOptions.keys()].map(index => htm`
+                <li>Penalty Option #${index+1}: ${penaltyOptions[index]}
+                  <button onClick=${() => onClick(index)}>Discard This Option</button>
+                </li>
+              `)}
+            </ul>
+
+            <p>(In a moment, the Suspect will select one of the two remaining Penalties and perform it three times for calibration.)</p>
+
+
+          `;
+        } else {
+          return htm`
+            <h1>Please Wait While the Investigator Examines the Penalties</h1>
+            <p>You are the Suspect. Right now, we're choosing the Penalty card. The Investigator is examining the Penalty cards, and will soon present you with a choice of two Penalties.</p>
+
+            <aside>Patient Robots have to perform the Penalty each time they violate their restrictions. Violent Robots must perform the Penalty twice in order to kill the Investigator.</aside>
+          `
+        }
+      }
+
+      const SuspectChoosesPenalty = ({mutate, isInvestigator, penaltyOptions}) => {
+        if (isInvestigator) {
+          return htm`
+            <h1>Please Wait While the Suspect Chooses a Penalty</h1>
+            <p>The Suspect is currently choosing one of the remaining Penalties. In a moment, the suspect will perform the chosen Penalty three times for calibration.</p>
+          `;
+        } else {
+          const onClick = (index) => {
+            mutate(
+              {key: 'phase', value: 'suspect-performs-penalty'},
+              {key: 'penaltyOptions', action: 'delete'},
+              {key: 'penalty', value: penaltyOptions[index]}
+            );
+          }
+          return htm`
+            <h1>Choose a Penalty</h1>
+            <p>The Investigator has offered you a choice of the following two Penalties.</p>
+
+            <aside>Choose the Penalty that you think would be easiest to perform without the Investigator noticing. Patient Robots have to perform the Penalty each time they violate their restrictions. Violent Robots must perform the Penalty twice in order to kill the Investigator.</aside>
+
+            <ul>
+              ${[...penaltyOptions.keys()].map(index => htm`
+                <li>Penalty Option #${index+1}: ${penaltyOptions[index]} <button onClick=${() => onClick(index)}>Choose This Option</button></li>
+              `)}
+            </ul>
+          `;
+        }
+      }
+
+      const SuspectPerformsPenalty = ({mutate, isInvestigator, penalty}) => {
+        const [first, setFirst] = useState(false);
+        const [second, setSecond] = useState(false);
+        const [third, setThird] = useState(false);
+
+        if (isInvestigator) {
+          const onSubmit = e => {
+            e.preventDefault();
+            mutate({key: 'phase', value: 'select-module'});
+          }
+          return htm`
+            <h1>Calibrate Suspect</h1>
+            <p>The Suspect has chosen this penalty: ${penalty}</p>
+            <p>Ask the Suspect to perform the Penalty three times. Confirm calibration using the form below.</p>
+            <form onSubmit=${onSubmit}>
+              <div><input id=first type=checkbox checked=${first} onInput=${e => setFirst(e.target.checked)} /> <label for=first>First time</label></div>
+              <div><input id=second type=checkbox checked=${second} onInput=${e => setSecond(e.target.checked)} /> <label for=second>Second time</label></div>
+              <div><input id=third type=checkbox checked=${third} onInput=${e => setThird(e.target.checked)} /> <label for=third>Third time</label></div>
+              <button disabled=${!(first && second && third)}>submit</button>
+            </form>
+          `;
+        } else {
+          return htm`
+            <h1>Calibrate Suspect</h1>
+            <p>You have chosen this Penalty: ${penalty}</p>
+            <p>Perform the Penalty three times, for calibration purposes.</p>
+          `;
+        }
+      }
+
+      const SelectModule = ({mutate, isInvestigator}) => {
+        const [selectedModule, setSelectedModule] = useState(null);
+        if (isInvestigator) {
+          const onSubmit = e => {
+            e.preventDefault();
+            mutate(
+              {key: 'moduleId', value: selectedModule},
+              {key: 'phase', value: 'administer-inducer'}
+            );
+          }
+          return htm`
+            <h1>Select a Module</h1>
+            <p>Select a Module that you and the Suspect would be comfortable discussing.</p>
+            <p>If this is your first time playing, select the Small Talk Module.</p>
+            <form onSubmit=${onSubmit}>
+              ${Object.keys(modules).map(moduleId => htm`
+                <div><label for=${moduleId}>
+                  <input type=radio name=module id=${moduleId} value=${moduleId}
+                    checked=${selectedModule === moduleId}
+                    onInput=${() => setSelectedModule(moduleId)}
+                  />
+                  ${modules[moduleId].title}
+                </label></div>`)}
+              <button disabled=${!selectedModule}>submit</button>
+            </form>
+          `;
+        } else {
+          return htm`
+            <h1>Select a Module</h1>
+            <p>Select a Module that you and the Interviewer would be comfortable discussing.</p>
+            <p>If this is your first time playing, select the Small Talk Module.</p>
+            <ul>
+              ${Object.values(modules).map(module => htm`<li>${module.title}</li>`)}
+            </ul>
+          `
+        }
+      }
+
+      const CalibrationCircle = ({calibration}) => {
+        const calibrationCircle = [];
+        for (const letter of calibration.split('')) {
+          calibrationCircle.push(letter, '\u2192');
+        }
+
+        return htm`<div class=circleContainer>
+          <div class=circle>
+            ${[...Array(calibrationCircle.length).keys()].map(i => htm`
+              <span style="transform: rotate(${360/calibrationCircle.length*i}deg)">${calibrationCircle[i]}</span>
+            `)}
+          </div>
+        </div>`
+      }
+
+      const AdministerInducer = ({mutate, isInvestigator, module, calibration, penalty}) => {
+        const [selectedCard, setSelectedCard] = useState();
+        if (isInvestigator) {
+          const cards = [...humanCards, ...module.patient, ...module.violent];
+          const onClick = () => {
+            const [card] = shuffle (cards)
+            mutate(
+              {key: 'card', value: card},
+              {key: 'phase', value: 'verify-task'}
+            )
+          }
+          const selectCard = e => {
+            e.preventDefault();
+            mutate(
+              {key: 'card', value: cards[selectedCard]},
+              {key: 'phase', value: 'verify-task'}
+            );
+          }
+
+          return htm`
+            <h1>Administer the Inducer</h1>
+
+            <p>The Suspect has not yet seen the Inducer card, and does not yet know whether the Suspect will be a human or a Robot.</p>
+
+            <p>Look at the circle below and assign the suspect an Interference Task, by asking the suspect a question about the pattern below, such as, "what letters come between A and D?" or "what letter follows B?"</p>
+
+            <${CalibrationCircle} calibration=${calibration} />
+
+            <p>When you click the button below, the Suspect will receive the Inducer card and begin to perform the Interference Task.</p>
+
+            <button onClick=${onClick}>Administer the Inducer</button>
+
+            ${debug && htm`
+              <form onSubmit=${selectCard}>
+                ${[...cards.keys()].map(i => htm`
+                  <div>
+                    <input type=radio id=card${i} value=card${i}
+                      checked=${selectedCard === i}
+                      onInput=${() => setSelectedCard(i)}
+                    />
+                    <label for=card${i}>${cards[i].role} ${cards[i].title}</label>
+                  </div>
+                `)}
+                <button>submit</button>
+              </form>
+            `}
+
+            <p>When you push this button, watch the suspect carefully. Humans must solve a maze to perform the Interference Task, but Robots see the cycle directly; Robots must pretend to solve a maze while they read the rules on their card.</p>
+
+            <${Board} ...${{penalty}} />
+          `
+        } else {
+          return htm`
+            <h1>Please Wait While the Investigator Administers the Inducer</h1>
+
+            <p>In a moment, the Interviewer will assign you an Interference Task, by asking you a question about letters on your Inducer card.</p>
+
+            <p>Then, the Interviewer will push a button to show you your Inducer card. Only then can you begin to perform the Interference Task.</p>
+
+            <${Board} ...${{penalty}} />
+          `
+        }
+      }
+
+      const HumanMaze = ({calibration}) => {
+        return htm`
+          <svg style="max-height: 60vh" version="1.1" viewBox="0 0 218.71 442.59" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+          <marker id="l" overflow="visible" orient="auto">
+          <path transform="matrix(-.8 0 0 -.8 -10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+          </marker>
+          <marker id="f" overflow="visible" orient="auto">
+          <path transform="matrix(.8 0 0 .8 10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+          </marker>
+          <marker id="e" overflow="visible" orient="auto">
+          <path transform="matrix(.8 0 0 .8 10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+          </marker>
+          <marker id="g" overflow="visible" orient="auto">
+          <path transform="matrix(-.8 0 0 -.8 -10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+          </marker>
+          <marker id="d" overflow="visible" orient="auto">
+          <path transform="matrix(.8 0 0 .8 10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+          </marker>
+          <marker id="i" overflow="visible" orient="auto">
+          <path transform="matrix(-.8 0 0 -.8 -10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+          </marker>
+          <marker id="b" overflow="visible" orient="auto">
+          <path transform="matrix(.8 0 0 .8 10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+          </marker>
+          <marker id="k" overflow="visible" orient="auto">
+          <path transform="matrix(-.8 0 0 -.8 -10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+          </marker>
+          <marker id="a" overflow="visible" orient="auto">
+          <path transform="matrix(.8 0 0 .8 10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+          </marker>
+          <marker id="j" overflow="visible" orient="auto">
+          <path transform="matrix(-.8 0 0 -.8 -10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+          </marker>
+          <marker id="c" overflow="visible" orient="auto">
+          <path transform="matrix(.8 0 0 .8 10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+          </marker>
+          <marker id="h" overflow="visible" orient="auto">
+          <path transform="matrix(-.8 0 0 -.8 -10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill-rule="evenodd" stroke="#000" stroke-width="1pt"/>
+          </marker>
+          </defs>
+          <g transform="translate(-7.6765 -11.069)">
+          <rect x="10.176" y="13.569" width="213.71" height="437.59" ry="106.85" fill-opacity="0" stroke="#000" stroke-width="5"/>
+          <path d="m39.01 118.99v-0.26758c0-44.163 35.553-79.716 79.716-79.716h1.696c44.163 0 79.716 35.553 79.716 79.716v222.19c0 44.163-35.553 79.716-79.716 79.716h-1.696c-44.163 0-79.716-35.553-79.716-79.716v-174.66" fill="none" stroke="#000" stroke-width="5"/>
+          <path d="m118.19 391.77-1.1467 1e-5c-29.123 0-52.569-23.446-52.569-52.569v-220.47c0-9.1027 2.2905-17.651 6.3289-25.102" fill="none" stroke="#000" stroke-width="5.0389"/>
+          <path d="m95.128 70.905c6.6634-3.0437 14.082-4.7381 21.912-4.7381h1.6762c29.123 0 52.569 23.446 52.569 52.569v220.47c0 13.969-5.3941 26.632-14.222 36.028" fill="none" stroke="#000" stroke-width="5.0389"/>
+          <path d="m147.56 291.15v49.763c0 15.034-12.103 27.137-27.137 27.137s-27.137-12.103-27.137-27.137l3e-6 -96.597" fill="none" stroke="#000" stroke-width="5"/>
+          <path d="m93.284 196.21 1e-6 -77.486c0-15.034 12.103-27.137 27.137-27.137s27.137 12.103 27.137 27.137v126.86" fill="none" stroke="#000" stroke-width="5"/>
+          <path d="m10.176 142.47h52.578" fill="none" stroke="#000" stroke-width="5"/>
+          <path d="m130.54 367.81 20.5 44.286" fill="none" stroke="#000" stroke-width="5"/>
+          <path d="m118.73 118.73v215.4" fill="none" stroke="#000" stroke-width="5"/>
+          <path d="m63.845 60.413 36.385 40.504" fill="none" stroke="#000" stroke-width="5"/>
+          <path d="m63.159 220.37h56.294" fill="none" stroke="#000" stroke-width="5"/>
+          <path d="m118.08 268.42h52.861" fill="none" stroke="#000" stroke-width="5"/>
+          <path d="m52.861 249.2-0.68651-19.222" fill="none" marker-end="url(#l)" marker-mid="url(#f)" stroke="#000" stroke-width=".75"/>
+          <path d="m107.87 310.41-0.68651-19.222" fill="none" marker-end="url(#g)" marker-mid="url(#e)" stroke="#000" stroke-width=".75"/>
+          <path d="m161.16 326.24-0.68651-19.222" fill="none" marker-end="url(#i)" marker-mid="url(#d)" stroke="#000" stroke-width=".75"/>
+          <path d="m80.709 168.19-0.68651 19.222" fill="none" marker-end="url(#k)" marker-mid="url(#b)" stroke="#000" stroke-width=".75"/>
+          <path d="m187.6 120.07-0.68651 19.222" fill="none" marker-end="url(#j)" marker-mid="url(#a)" stroke="#000" stroke-width=".75"/>
+          <path d="m214.42 197.31-0.68651-19.222" fill="none" marker-end="url(#h)" marker-mid="url(#c)" stroke="#000" stroke-width=".75"/>
+          <text x="47.259296" y="265.83356" fill="#000000" font-family="sans-serif" font-size="13.333px" font-weight="bold" style="line-height:1.25" xml:space="preserve"><tspan x="47.259296" y="265.83356" font-family="sans-serif" font-weight="bold">${calibration.charAt(0)}</tspan></text>
+          <text x="209.71315" y="211.82294" fill="#000000" font-family="sans-serif" font-size="40px" style="line-height:1.25" xml:space="preserve"><tspan x="209.71315" y="211.82294"/></text>
+          <text x="208.33501" y="211.60645" fill="#000000" font-family="sans-serif" font-size="13.333px" font-weight="bold" style="line-height:1.25" xml:space="preserve"><tspan x="208.33501" y="211.60645" font-family="sans-serif" font-weight="bold">${calibration.charAt(1)}</tspan></text>
+          <text x="74.996269" y="162.23735" fill="#000000" font-family="sans-serif" font-size="13.333px" font-weight="bold" style="line-height:1.25" xml:space="preserve"><tspan x="74.996269" y="162.23735" font-family="sans-serif" font-weight="bold">${calibration.charAt(2)}</tspan></text>
+          <text x="182.17361" y="114.55608" fill="#000000" font-family="sans-serif" font-size="13.333px" font-weight="bold" style="line-height:1.25" xml:space="preserve"><tspan x="182.17361" y="114.55608" font-family="sans-serif" font-weight="bold">${calibration.charAt(3)}</tspan></text>
+          <text x="156.01222" y="340.30365" fill="#000000" font-family="sans-serif" font-size="13.333px" font-weight="bold" style="line-height:1.25" xml:space="preserve"><tspan x="156.01222" y="340.30365" font-family="sans-serif" font-weight="bold">${calibration.charAt(4)}</tspan></text>
+          <text x="102.42354" y="323.42532" fill="#000000" font-family="sans-serif" font-size="13.333px" font-weight="bold" style="line-height:1.25" xml:space="preserve"><tspan x="102.42354" y="323.42532" font-family="sans-serif" font-weight="bold">${calibration.charAt(5)}</tspan></text>
+          </g>
+          </svg>
+        `;
+      }
+
+      const Card = ({card, calibration}) => {
+        if (card.role === 'human') {
+          return htm`
+            <div class=card>
+              <h2>Human</h2>
+              <${HumanMaze} ...${{calibration: calibration.toUpperCase()}} />
+            </div>
+          `;
+        } else if (card.role === 'patient') {
+          return htm`
+            <div class=card>
+              <h2>Patient Robot: ${card.title}</h2>
+              ${calibration && h(CalibrationCircle, {calibration})}
+              <p>Compulsion: <span dangerouslySetInnerHTML=${{__html:card.compulsion}}/></p>
+
+              <aside>You must complete the penalty once for each time you violate the above compulsion.</aside>
+            </div>
+          `;
+        } else {
+          return htm`
+            <div class=card>
+              <h2>Violent Robot: ${card.title}</h2>
+              ${calibration && h(CalibrationCircle, {calibration})}
+              <p>Complete two out of three of the following Drives, then kill the Investigator.</p>
+              <ul>
+                ${card.drives.map(drive => htm`<li>${drive}</li>`)}
+                <li>Perform the penalty twice</li>
+              </ul>
+            </div>
+          `;
+        }
+      }
+
+      const VerifyTask = ({mutate, isInvestigator, calibration, card, penalty}) => {
+        if (isInvestigator) {
+          const verify = answeredCorrectly => {
+            const shuffledBackgrounds = shuffle(backgrounds);
+            if (answeredCorrectly) {
+              mutate(
+                {key: 'backgroundOptions', value: shuffledBackgrounds.slice(0, 3)},
+                {key: 'phase', value: 'select-background'})
+            } else {
+              const [background] = shuffledBackgrounds;
+              mutate(
+                {key: 'background', value: background},
+                {key: 'phase', value: 'confirm-identity'}
+              )
+            }
+          }
+          return htm`
+            <h1>Verify Interference Task</h1>
+            <p>Was the Suspect able to correctly answer your question about the order of letters in the maze?</p>
+            <${CalibrationCircle} calibration=${calibration} />
+            <p><button onClick=${() => verify(true)}>Yes</button></p>
+            <p><button onClick=${() => verify(false)}>No</button></p>
+
+            <${Board} ...${{penalty}} />
+          `
+        } else {
+          return htm`
+            <h1>Perform the Interference Task</h1>
+            <p>This is your card. Read it and answer the Interviewer's question to perform the Interference Task.</p>
+            <${Card} ...${{card, calibration: calibration}} />
+
+            <${Board} ...${{penalty}} />
+          `;
+        }
+      }
+
+      const SelectBackground = ({mutate, isInvestigator, backgroundOptions, card, penalty}) => {
+        const [selectedBackground, setSelectedBackground] = useState(null);
+        if (isInvestigator) {
+          return htm`
+            <h1>Please Wait While the Suspect Chooses a Background</h1>
+
+            <p>In a moment, you'll ask the Suspect to state their name for the record, and ask the Suspect to tell you about their background.</p>
+          `;
+        } else {
+          const onSubmit = e => {
+            e.preventDefault();
+            mutate(
+              {key: 'background', value: selectedBackground},
+              {key: 'phase', value: 'confirm-identity'}
+            );
+          }
+          return htm`
+            <h1>Choose a Background</h1>
+            <p>Choose one of the following backgrounds for your character.</p>
+            <form onSubmit=${onSubmit}>
+              ${backgroundOptions.map(background => htm`
+                <div><label for=${background}>
+                  <input type=radio name=module id=${background} value=${background}
+                    checked=${selectedBackground === background}
+                    onInput=${() => setSelectedBackground(background)}
+                  />
+                  ${background}
+                </label></div>`)}
+              <button disabled=${!selectedBackground}>submit</button>
+            </form>
+
+            ${card.role !== 'human' && h(Card, {card})}
+
+            <${Board} ...${{penalty}} />
+          `;
+        }
+      }
+
+      const ConfirmIdentity = ({mutate, isInvestigator, card, background, penalty}) => {
+        const [name, setName] = useState('');
+        if (isInvestigator) {
+          const onSubmit = e => {
+            e.preventDefault();
+            mutate(
+              {key: 'name', value: name},
+              {key: 'phase', value: 'discuss-background'}
+            )
+          }
+          return htm`
+            <h1>Confirm the Suspect's Identity</h1>
+
+            <p>The Suspect's background is: ${background}</p>
+
+            <p>Ask the Suspect to state their name for the record.</p>
+            <form onSubmit=${onSubmit}>
+              <label for=name>What is the Suspect's name? (First, middle, and last)</label>
+              <input type=text id=name value=${name} onInput=${e => setName(e.target.value)}/>
+              <button>submit</button>
+            </form>
+
+              <${Board} ...${{penalty, background}} />
+          `;
+        } else {
+          return htm`
+            <h1>Confirm Your Identity</h1>
+
+            <p>Your background is: ${background}</p>
+
+            <p>Please state your full name for the record. (First, middle, and last)</p>
+
+            <aside>Use whatever name you like. This doesn't have to be your real name. ${card.role !== 'human' && `Your Robot card does not yet apply.`}</aside>
+
+            <${Board} ...${{penalty, background}} />
+
+            ${card.role !== 'human' && h(Card, {card})}
+          `;
+        }
+      }
+
+      const DiscussBackground = ({mutate, isInvestigator, name, background, card, penalty}) => {
+        if (isInvestigator) {
+          const onClick = () => {
+            mutate({key: 'phase', value: 'read-paragraph'})
+          }
+          return htm`
+            <h1>Discuss the Suspect's Background</h1>
+            <p>Ask the Suspect this question: "It says here your background is: ${background}. Tell me about that."</p>
+            
+            <button onClick=${onClick}>Begin the Interrogation</button>
+
+            <${Board} ...${{penalty, name, background}} />
+          `;
+        } else {
+          return htm`
+            <h1>Discuss Your Background</h1>
+
+            <p>Tell the Investigator about your background.</p>
+
+            <aside>You don't need to give a lengthy response. ${card.role !== 'human' && `Your Robot card does not yet apply.`}</aside>
+
+            <${Board} ...${{penalty, name, background}} />
+
+            ${card.role !== 'human' && h(Card, {card})}
+          `;
+        }
+      }
+
+      const Prompts = ({module}) => {
+        return htm`<p>Ask questions like these:</p>
+          <ul>
+            <${PromptExamples} ...${{prompts:module.primaryPrompts}} />
+          </ul>
+
+          <p>Ask follow-up questions like these, while the Suspect is fulfilling another prompt:</p>
+          <ul>
+            <${PromptExamples} ...${{prompts:module.secondaryPrompts}} />
+          </ul>
+        `
+      }
+
+      const PromptExamples = ({prompts}) => {
+        return prompts.map(prompt => htm`
+          <li>${prompt.title}
+            <ul>
+              ${prompt.examples.map(example => htm`
+                <li>${example}</li>
+              `)}
+            </ul>
+          </li>
+        `);
+      }
+
+      const timerLengthInSeconds = 5*60;
+
+      const ReadParagraph = ({mutate, isInvestigator, module, card, name, background, penalty}) => {
+        const onClick = () => {
+          mutate(
+            {key: 'timerEnd', value: Date.now() + timerLengthInSeconds * 1000},
+            {key: 'phase', value: 'interrogation'}
+          )
+        }
+        if (isInvestigator) {
+          return htm`
+            <h1>Inform the Suspect of Their Responsibilities</h1>
+            <p>Read this to the Suspect.</p>
+            <blockquote>${module.introduction}</blockquote>
+            <p>When you're done reading the paragraph, review the suggested prompts below, then click the button below to start the timer. (Don't give the Suspect too much time to prepare.)</p>
+            <button onClick=${onClick}>Start the Timer</button>
+
+            <${Board} ...${{penalty, name, background}} />
+
+            <${Prompts} ...${{module}} />
+          `
+        } else {
+          return htm`
+            <h1>Please Wait While the Investigator Starts the Timer</h1>
+
+            <p>Remain calm. Do not attempt to leave the room. This will all be over shortly.</p>
+
+            ${card.role !== 'human' && h(Card, {card})}
+
+            <${Board} ...${{penalty, name, background}} />
+          `
+        }
+      }
+
+      const Board = ({penalty, name, background}) => {
+        return htm`
+          <div class=board>
+            <div>Penalty: ${penalty}</div>
+            ${name && htm`<div>Name: ${name}</div>`}
+            ${background && htm`<div>Background: ${background}</div>`}
+          </div>
+        `;
+      }
+
+      const clickRobot = (mutate, card) => {
+        if (card.role === 'human') {
+          mutate({key: 'phase', value: 'humans-lose'});
+        } else {
+          mutate({key: 'phase', value: 'investigator-wins'});
+        }
+      }
+
+      const useInterval = (callback, delay) => {
+        const savedCallback = useRef();
+
+        // Remember the latest callback.
+        useEffect(() => {
+          savedCallback.current = callback;
+        }, [callback]);
+
+        // Set up the interval.
+        useEffect(() => {
+          function tick() {
+            savedCallback.current();
+          }
+          if (delay !== null) {
+            let id = setInterval(tick, delay);
+            return () => clearInterval(id);
+          }
+        }, [delay]);
+      }
+
+      const Interrogation = ({mutate, isInvestigator, paused, timerEnd, module, card, penalty, name, background, killedInvestigator}) => {
+        const [clockOffset] = useState(Date.now() - timerEnd + timerLengthInSeconds*1000);
+        const [early, setEarly] = useState(false);
+        const [timeRemaining, setTimeRemaining] = useState(timerLengthInSeconds*1000);
+
+        useInterval(() => {
+          if (paused) return;
+          let remaining = timerEnd - Date.now() + clockOffset;
+          if (remaining < 0) remaining = 0;
+          setTimeRemaining(remaining);
+        }, 100);
+
+        const secondsRemaining = Math.ceil(timeRemaining / 1000);
+        const minutes = Math.floor(secondsRemaining / 60);
+        const seconds = ('0' + (secondsRemaining%60)).slice(-2);
+
+        const clickEndInterrodation = () => {
+          mutate({key: 'phase', value: 'final-question'});
+        }
+
+        const pause = () => {
+          if (paused) {
+            mutate(
+              {key: 'paused', value: false},
+              {key: 'timerEnd', value: Date.now()+timeRemaining}
+            );
+          } else {
+            mutate(
+              {key: 'paused', value: true},
+            );
+          }
+        }
+
+        const reset = () => {
+          mutate(
+            {key: 'timerEnd', value: Date.now()+timerLengthInSeconds*1000}
+          );
+        }
+        if (isInvestigator) {
+          if (killedInvestigator) {
+            return h(ViolentWins, {mutate, isInvestigator, card, penalty, name, background});
+          }
+          return htm`
+            <h1>Interrogate the Suspect</h1>
+
+            <div>Time Remaining: ${minutes}:${seconds}
+              <button disabled=${!secondsRemaining} onClick=${pause}>${(paused && secondsRemaining) ? 'unpause' : 'pause'}</button>
+              <button onClick=${reset}>reset</button>
+            </div>
+
+            <p><button onClick=${()=>clickRobot(mutate,card)}>The Suspect Is a Robot</button></p>
+
+            <p>You may not give the Suspect a Human Determination until the timer is complete.</p>
+
+            <p><button disabled=${!early && secondsRemaining > 0} onClick=${clickEndInterrodation}>End the Interrogation</button></p>
+
+            <p><input disabled=${secondsRemaining === 0} type=checkbox id=early checked=${early} onInput=${e => setEarly(e.target.checked)}/> <label class="${secondsRemaining === 0 && 'disabled'}" for=early>End the interrogation early</label></p>
+
+            <${Board} ...${{penalty, name, background}} />
+
+            <${Prompts} ...${{module}} />
+          `;
+        } else {
+          if (card.role === 'human') {
+            return htm`
+              <h1>Answer the Questions</h1>
+
+              <div>Time Remaining: ${minutes}:${seconds} ${paused && '(paused)'}</div>
+
+              <p>You are a human. Answer the interrogation questions honestly. Behave naturally. Avoid performing the Penalty action.</p>
+
+              <${Board} ...${{penalty, name, background}} />
+            `;
+          } else if (card.role === 'patient') {
+            return htm`
+              <h1>Answer the Questions</h1>
+
+              <div>Time Remaining: ${minutes}:${seconds} ${paused && '(paused)'}</div>
+
+              <${Card} ...${{card}} />
+
+              <${Board} ...${{penalty, name, background}} />
+            `;
+          } else {
+            const killInvestigator = () => mutate({key: 'killedInvestigator', value: true});
+            if (killedInvestigator) {
+              return h(ViolentWins, {mutate, isInvestigator, card, penalty, name, background});
+            }
+            return htm`
+              <h1>Kill the Investigator</h1>
+
+              <div>Time Remaining: ${minutes}:${seconds} ${paused && '(paused)'}</div>
+
+              <button onClick=${killInvestigator}>Kill the Investigator</button>
+
+              <${Card} ...${{card}} />
+
+              <${Board} ...${{penalty, name, background}} />
+            `;
+          }
+        }
+      }
+
+      const FinalQuestion = ({mutate, isInvestigator, module, card, penalty, name, background}) => {
+        const clickHuman = () => {
+          if (card.role === 'human') {
+            mutate({key: 'phase', value: 'humans-win'});
+          } else if (card.role === 'patient') {
+            mutate({key: 'phase', value: 'patient-wins'});
+          } else {
+            return; // button malfunctions if the robot is violent
+          }
+        }
+        if (isInvestigator) {
+          return htm`
+            <h1>Ask a Final Question</h1>
+
+            <p>Ask the Suspect a final question, then make your determination.</p>
+
+            <p>If the Suspect is a Violent Robot, then the "Human" button will malfunction. Violent Robots may not accept a "Human" certification.</p>
+
+            <p><button onClick=${()=>clickRobot(mutate,card)}>The Suspect Is a Robot</button></p>
+            <p><button onClick=${clickHuman}>The Suspect Is a Human</button></p>
+
+            <${Board} ...${{penalty, name, background}} />
+          `;
+        } else if (card.role === 'human') {
+          return htm`
+            <h1>Answer the Final Question</h1>
+
+            <p>The interrogation is almost complete. Answer the final question.</p>
+
+            <${Board} ...${{penalty, name, background}} />
+          `;
+        } else if (card.role === 'patient') {
+          return htm`
+            <h1>Answer the Final Question</h1>
+
+            <p>The interrogation is almost complete. You must perform all outstanding Penalties before you answer this question.</p>
+
+            <${Board} ...${{penalty, name, background}} />
+
+            <${Card} ...${{card}} />
+          `;
+        } else {
+          const killInvestigator = () => mutate({key: 'killedInvestigator', value: true});
+          return htm`
+            <h1>Kill the Investigator or Die Trying</h1>
+
+            <p>You must immediately satisfy all of your requirements, wait ten seconds, and kill the Investigator, or die trying.</p>
+
+            <button onClick=${killInvestigator}>Kill the Investigator</button>
+
+            <${Board} ...${{penalty, name, background}} />
+
+            <${Card} ...${{card}} />
+          `;
+        }
+      }
+
+      const HumansWin = ({mutate, isInvestigator}) => {
+        if (isInvestigator) {
+          return htm`
+            <h1>You Both Win!</h1>
+
+            <p>You correctly identified the Suspect as human. Congratulations!</p>
+
+            <button onClick=${()=>resetGame(mutate)}>Exit</button>
+          `;
+        } else {
+          return htm`
+            <h1>You Both Win!</h1>
+
+            <p>The Investigator correctly identified you as a human. You are free to go!</p>
+
+            <button onClick=${()=>resetGame(mutate)}>Exit</button>
+          `;
+        }
+      }
+
+      const HumansLose = ({mutate, isInvestigator, name, penalty, background}) => {
+        if (isInvestigator) {
+          const twitterParameters = {
+            text: encodeURIComponent(`
+              I have failed in my interrogation. I incorrectly identified a Human as a Robot. I am deeply ashamed.`.trim().replace(/  /g, '')),
+            url: document.querySelector('link[rel=canonical]').getAttribute('href'),
+            hashtags: 'ScarletBadgeOfShame',
+            via: 'copsvrobots',
+            related: 'dfabu',
+          }
+
+          const twitterLink = `https://twitter.com/intent/tweet?${
+            Object.keys(twitterParameters).map(key => `${key}=${twitterParameters[key]}`).join('&amp;')
+          }`;
+          return htm`
+            <h1>You Both Lose!</h1>
+
+            <p>The Suspect was human. You have incorrectly dispatched an Invasive Confirmation Unit.</p>
+
+            <p>You now must face disciplinary action, and you must bear the Scarlet Badge of Shame.</p>
+
+            <p><b>You should publicly acknowledge your shame by apologizing to the Suspect's family on Twitter or other social media.</b> If social media is not available, (e.g. due to the internet achieving sentience and refusing to serve its human masters,) acknowledge your mistake in a forum no less public than a group text with mutual friends.</p>
+
+            <p><a target=_blank rel=noopener href="${twitterLink}">Post to Twitter</a></p>
+
+            <button onClick=${()=>resetGame(mutate)}>Exit</button>
+
+            <${Board} ...${{penalty, name, background}} />
+          `;
+        } else {
+          return htm`
+            <h1>You Both Lose!</h1>
+
+            <p>The Investigator incorrectly identified you as a Robot. An Invasive Confirmation Unit will be dispatched to your location.</p>
+
+            <p>As a consolation, the Investigator must now bear the Scarlet Badge of Shame.</p>
+
+            <p><b>The Investigator should publicly acknowledge the shame by apologizing to the your family on Twitter or other social media.</b> If social media is not available, (e.g. due to the internet achieving sentience and refusing to serve its human masters,) acknowledge the Investigator's mistake in a forum no less public than a group text with mutual friends.</p>
+
+            <button onClick=${()=>resetGame(mutate)}>Exit</button>
+
+            <${Board} ...${{penalty, name, background}} />
+          `;
+        }
+      }
+
+      const InvestigatorWins = ({mutate, isInvestigator, card, penalty, name, background}) => {
+        if (isInvestigator) {
+          return htm`
+            <h1>You Win!</h1>
+
+            <p>You correctly identified the Suspect as a Robot! An Invasive Confirmation Unit will be dispatched to the Suspect's location, where the Suspect will be spinal tapped for confirmation.</p>
+
+            <${Card} ...${{card}} />
+
+            <${Board} ...${{penalty, name, background}} />
+
+            <button onClick=${()=>resetGame(mutate)}>Exit</button>
+          `;
+        } else {
+          return htm`
+            <h1>You Lose!</h1>
+
+            <p>The Investigator successfully identified you as a Robot. An Invasive Confirmation Unit will be dispatched to your location, where you will be spinal tapped for confirmation.</p>
+
+            <button onClick=${()=>resetGame(mutate)}>Exit</button>
+
+            <${Card} ...${{card}} />
+
+            <${Board} ...${{penalty, name, background}} />
+          `;
+        }
+      }
+
+      const PatientWins = ({mutate, isInvestigator, card, penalty, name, background}) => {
+        if (isInvestigator) {
+          return htm`
+            <h1>You Lose!</h1>
+
+            <p>The Suspect was a Patient Robot. The Robot is now certified human, free to walk the streets.</p>
+
+            <${Card} ...${{card}} />
+
+            <${Board} ...${{penalty, name, background}} />
+
+            <button onClick=${()=>resetGame(mutate)}>Exit</button>
+          `;
+        } else {
+          return htm`
+            <h1>You Win!</h1>
+
+            <p>The Investigator incorrectly certified you as a human. You are free to go!</p>
+
+            <p>Thank the Investigator in a robotic and obviously weird way.</p>
+
+            <button onClick=${()=>resetGame(mutate)}>Exit</button>
+
+            <${Board} ...${{penalty, name, background}} />
+
+            <${Card} ...${{card}} />
+          `;
+        }
+      }
+
+      const ViolentWins = ({mutate, isInvestigator, card, penalty, name, background}) => {
+        if (isInvestigator) {
+          return htm`
+            <h1>You Died!</h1>
+
+            <p>The Suspect was a Violent Robot. The Suspect successfully performed their requirements, waited ten seconds, and then clicked a button to kill you.</p>
+
+            <p>Game over. You lose.</p>
+
+            <${Card} ...${{card}} />
+
+            <${Board} ...${{penalty, name, background}} />
+
+            <button onClick=${()=>resetGame(mutate)}>Exit</button>
+          `;
+        } else {
+          return htm`
+            <h1>You Win!</h1>
+
+            <p>You killed the Investigator. You are free to walk the streets.</p>
+
+            <button onClick=${()=>resetGame(mutate)}>Exit</button>
+
+            <${Board} ...${{penalty, name, background}} />
+
+            <${Card} ...${{card}} />
+          `;
+        }
+      }
+
+      const resetGame = (mutate, otherMutations = []) => {
+        mutate(
+          {key: 'phase', value: 'lobby'},
+          {key: 'paused', value: false},
+          {key: 'killedInvestigator', value: false},
+          ...otherMutations
+        );
+      }
+
+      const Game = () => {
+        const [state, setState] = useState();
+        const {current: socket} = useRef(io());
+
+        const mutate = (...mutations) => socket.emit('mutate state', {roomId: room, mutations});
+
+        useEffect(() => {
+          socket.on('state change', newState => {
+            console.log('state change', newState);
+            setState(newState);
+          });
+          if (socket.connected) {
+            socket.emit('room', {room, defaultRoom});
+          }
+          socket.on('connect', () => socket.emit('room', {room, defaultRoom}));
+          socket.on('user disconnected', ({playerId, room}) => {
+            resetGame(mutate, [{action: 'delete', path: ['players'], key: playerId}]);
+          });
+        }, []);
+
+        const currentPlayerId = socket.id;
+        let phase = state && state.phase;
+        const isInvestigator = state && state.investigator && currentPlayerId === state.investigator;
+        const module = state && state.moduleId && modules[state.moduleId];
+
+        if (!socket.connected || !state) {
+          return htm`<h1>Welcome to ${document.title}</h1><p>Loading...</p>`;
+        } else if (phase === 'lobby') {
+          if (!state.players[socket.id]) {
+            return h(RecordName, {socket});
+          } else {
+            return h(Lobby, {players: state.players, currentPlayerId, mutate});
+          }
+        } else if (!state.players[socket.id]) {
+          return htm`<h1>Welcome to ${document.title}</h1><p>A game is currently in progress. Please wait.</p>`;
+        } else if (phase === 'investigator-discards-penalty') {
+          return h(InvestigatorDiscardsPenalty, {mutate, isInvestigator, ...state});
+        } else if (phase === 'suspect-chooses-penalty') {
+          return h(SuspectChoosesPenalty, {mutate, isInvestigator, ...state});
+        } else if (phase === 'suspect-performs-penalty') {
+          return h(SuspectPerformsPenalty, {mutate, isInvestigator, ...state});
+        } else if (phase === 'select-module') {
+          return h(SelectModule, {mutate, isInvestigator, ...state});
+        } else if (phase === 'administer-inducer') {
+          return h(AdministerInducer, {mutate, isInvestigator, module, ...state});
+        } else if (phase === 'verify-task') {
+          return h(VerifyTask, {mutate, isInvestigator, module, ...state});
+        } else if (phase === 'select-background') {
+          return h(SelectBackground, {mutate, isInvestigator, ...state});
+        } else if (phase === 'confirm-identity') {
+          return h(ConfirmIdentity, {mutate, isInvestigator, ...state});
+        } else if (phase === 'discuss-background') {
+          return h(DiscussBackground, {mutate, isInvestigator, ...state});
+        } else if (phase === 'read-paragraph') {
+          return h(ReadParagraph, {mutate, isInvestigator, module, ...state});
+        } else if (phase === 'interrogation') {
+          return h(Interrogation, {mutate, isInvestigator, module, ...state});
+        } else if (phase === 'final-question') {
+          return h(FinalQuestion, {mutate, isInvestigator, module, ...state});
+        } else if (phase === 'humans-win') {
+          return h(HumansWin, {mutate, isInvestigator, ...state});
+        } else if (phase === 'humans-lose') {
+          return h(HumansLose, {mutate, isInvestigator, ...state});
+        } else if (phase === 'investigator-wins') {
+          return h(InvestigatorWins, {mutate, isInvestigator, ...state});
+        } else if (phase === 'patient-wins') {
+          return h(PatientWins, {mutate, isInvestigator, ...state});
+        } else if (phase === 'violent-wins') {
+          return h(ViolentWins, {mutate, isInvestigator, ...state});
+        } else {
+          return htm`<h1>Error! Unknown phase: ${state.phase}</h1>`;
+        }
+      }
+
+      const HomeScreen = () => {
+        const [id, setId] = useState(commonWords[Math.floor(Math.random() * commonWords.length)]);
+        return htm`
+          <h1>Welcome to ${document.title}</h1>
+
+          <p>Play "Inhuman Conditions" online across multiple devices.</p>
+
+          <p><label for=id>To create a new game or join an existing game, enter a game ID.</label></p>
+
+          <form onSubmit=${e => {e.preventDefault(); window.location.href='/'+id}}>
+            <input id=id type=text value=${id} onInput=${e => setId(e.target.value)} />
+            <button>submit</button>
+          </form>
+
+          ${footer}
+        `;
+      }
+
+      const App = () => {
+        return room === '/' ? h(HomeScreen) : h(Game);
+      }
+
+      render(h(App), document.body);
+    </script>
+  </body>
+</html>
